@@ -1,0 +1,55 @@
+#include <iostream>     // std::cout
+#include <fstream>
+#include "classes.h"
+
+using namespace std;
+
+
+int main(int argc, char** argv)
+{
+  if(argc != 4)
+    {
+      cerr << " for " << argv[0] << " first argument: <0> first run, <1> restart, second: temperaure, third: nsteps" << endl;
+      return 1;
+    }
+
+  int opt=atoi(argv[1]);
+  double temp=atof(argv[2]);
+  int n_steps=atoi(argv[3]);
+  if(opt==0)
+    {
+      int n_cities=32;
+
+      Map myMap(n_cities, 1);
+      Chromosome myCromo(myMap);
+
+      myCromo.Print_Chromosome();
+      myCromo.Check_Bonds();
+
+      myCromo.SA_evolution(n_steps,temp);
+      myCromo.Print_Chromosome();
+      myCromo.Print_Conf_Final();
+    }
+  
+  if(opt==1)
+    {
+      
+      Chromosome myCromo;
+      myCromo.Restart();
+
+      myCromo.Print_Chromosome();
+      myCromo.Check_Bonds();
+      
+      myCromo.SA_evolution(n_steps,temp);
+     
+      myCromo.Print_Conf_Final();
+      myCromo.Print_Chromosome();
+    }
+  
+  return 0;
+}
+
+
+
+
+

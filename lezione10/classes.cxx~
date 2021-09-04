@@ -1,0 +1,563 @@
+#include "classes.h"
+#include <iostream>
+#include <fstream>
+#include <algorithm>    // std::random_shuffle
+#include <vector>       // std::vector
+#include <numeric>
+#include <cmath>
+#include <iterator>
+#include <sstream>
+#include <string>
+
+using namespace std;
+
+
+void rnd_shuffle(vector<int>::iterator first, vector<int>::iterator last, Random &rnd)
+{
+  int n = (last-first);
+
+  for (int i=n-1; i>0; --i) {
+    swap(first[i],first[int(rnd.Rannyu()*(i+1))]);
+  }
+} 
+
+
+Map :: Map(int n_cit, int opt)
+{
+  n_cities=n_cit;
+
+  string infile_primes = "Primes";
+  string infile_seed = "seed.in";
+  m_rnd.MySetRandom(infile_primes.c_str(), infile_seed.c_str());
+
+  //circle option
+  if(opt==0)
+    {
+      ofstream file("cities_circle.dat");
+  
+      for(int i=0; i<n_cities; i++)
+	{
+	  double teta= 2*acos(-1)*m_rnd.Rannyu();
+	  double x=cos(teta); double y=sin(teta);
+	  m_x_cities.push_back(x);    m_y_cities.push_back(y);
+	  file<<x<<' '<<y<<endl;
+	}
+
+      file.close();
+      cout<<"cities generated on an unitary circle"<<endl;
+    }
+
+
+  //random in square option
+  if(opt==1)
+    {
+      ofstream file("cities_square.dat");
+  
+      for(int i=0; i<n_cities; i++)
+	{
+	  double x=m_rnd.Rannyu(-1,1); double y=m_rnd.Rannyu(-1,1);
+	  m_x_cities.push_back(x);    m_y_cities.push_back(y);
+	  file<<x<<' '<<y<<endl;
+	}
+
+      file.close();
+      cout<<"cities generated in a square"<<endl;
+    }
+      
+}
+
+
+
+
+Chromosome :: Chromosome(Map map)
+{
+  string infile_primes = "Primes";
+  string infile_seed = "seed.in";
+  c_rnd.MySetRandom(infile_primes.c_str(), infile_seed.c_str());
+
+  c_map=map;
+  c_n_genes=map.Get_n_cities();
+  
+  vector<int> vect(c_n_genes);
+  iota(vect.begin(),vect.end(),0);
+  rnd_shuffle(vect.begin()+1, vect.end(), c_rnd);
+  
+  c_genes=vect;
+  c_cost_func=Compute_Cost_Function();
+  cout << "chromosome created" << endl;
+}
+
+
+
+
+double Chromosome :: Compute_Cost_Function(void)
+{
+  double sum=0.;
+  int dim= c_n_genes;
+  
+  for(int i=0;i<dim;i++)
+    {
+      int n_city1=c_genes[i];
+      int n_city2=c_genes[(i+1)%dim];
+      
+      double delta_x_2=pow( c_map.Get_x(n_city1) - c_map.Get_x(n_city2), 2.);
+      double delta_y_2=pow( c_map.Get_y(n_city1) - c_map.Get_y(n_city2), 2.);      
+
+      sum+=sqrt(delta_x_2+delta_y_2);
+    }
+
+  return sum;
+}
+
+
+
+
+
+double Chromosome :: Compute_Cost_Function(vector<int> new_genes)
+{
+  double sum=0.;
+  if(c_n_genes!=int(new_genes.size())){ cout << "new genes size error" << endl; exit(-1);};
+  int dim= c_n_genes;
+  
+  for(int i=0;i<dim;i++)
+    {
+      int n_city1=new_genes[i];
+      int n_city2=new_genes[(i+1)%dim];
+      
+      double delta_x_2=pow( c_map.Get_x(n_city1) - c_map.Get_x(n_city2), 2.);
+      double delta_y_2=pow( c_map.Get_y(n_city1) - c_map.Get_y(n_city2), 2.);      
+
+      sum+=sqrt(delta_x_2+delta_y_2);
+    }
+
+  return sum;
+}
+
+
+
+
+void Chromosome :: Print_Chromosome(void)
+{
+  for (std::vector<int>::iterator it=c_genes.begin(); it!=c_genes.end(); ++it)
+	cout << *it << ' ';
+  cout << Get_Cost_Function() << '\n';
+}
+
+
+
+void Chromosome :: Check_Bonds(void)
+{
+  vector<int> to_check=Get_Genes();
+  vector<int>::iterator it;
+
+  for(int value=1; value<c_n_genes; value++)
+    {
+      it = find(to_check.begin(), to_check.end(), value);
+      if (it != to_check.end())
+	continue;
+      else
+	{
+	  cerr << "bonds violation" << endl;
+	  exit(-1);
+	}
+    }
+  cout << "check completed with success" << endl;
+}
+
+
+
+
+vector<int> Chromosome :: Mutation()
+{
+  double r=c_rnd.Rannyu();
+  vector<int> genes=c_genes;
+  
+  //mutation algorythm 1
+  if(r<0.25)
+    {
+      int idx1=int(c_rnd.Rannyu(1,c_n_genes));
+      int idx2=int(c_rnd.Rannyu(1,c_n_genes));
+      // cout<<idx1<<' '<<idx2<<endl;
+      // cout<<"mutation1"<<endl;
+      
+      swap(genes[idx1],genes[idx2]);
+    }
+  
+  
+  //mutation algorythm 2
+  if(r>0.25 && r<0.5)
+    {
+       
+      int n=int(c_rnd.Rannyu(1,c_n_genes));
+      //cout << n << endl;
+      //cout<<"mutation2"<<endl;
+      for(int i=1;i<c_n_genes;i++)
+	{
+	  if(genes[i]+n<c_n_genes)
+	    {
+	      genes[i]+=n;
+	    }
+	  else
+	    {
+	      genes[i]=(genes[i]+n)%(c_n_genes) +1;
+	    }
+	}
+    }
+  
+  if(r>0.5 && r<0.75)
+    {
+      int m=int(c_rnd.Rannyu(2,c_n_genes/2));
+      int idx1=int(c_rnd.Rannyu(1,c_n_genes-2*m));
+      int idx2=int(c_rnd.Rannyu(idx1+m,c_n_genes-m));
+      //cout << m << ' ' << idx1 << ' ' << idx2 << endl;
+      //cout<<"mutation3"<<endl;
+      
+      swap_ranges(genes.begin()+idx1,genes.begin()+idx1+m,genes.begin()+idx2);
+    }
+
+  
+  if(r>0.75)
+    {
+      int m=int(c_rnd.Rannyu(2,c_n_genes));
+      int idx1=int(c_rnd.Rannyu(1,c_n_genes-m));
+      //cout<<"mutation4"<<endl;
+      //cout << m << ' ' << idx1 << endl;
+      
+      reverse(genes.begin()+idx1, genes.begin()+m+idx1);
+    }  
+
+  return genes;
+}
+
+
+void Chromosome :: SA_step(double temp)
+{
+  vector<int> new_genes=Mutation();
+ 
+  double new_cost=Compute_Cost_Function(new_genes);
+  double old_cost=c_cost_func;
+  double beta=1./temp;
+  double prob_exp=exp(-beta*(new_cost-old_cost));
+  double prob=min(1.,prob_exp);
+
+  double r=c_rnd.Rannyu();
+  if(r<prob){ c_genes=new_genes; c_cost_func=new_cost;};
+  
+  ofstream cost_file;
+  cost_file.open("cost_file.dat",ios::app);
+  cost_file << c_cost_func << endl;
+  cost_file.close();
+}
+
+
+void Chromosome :: SA_evolution(int n_steps, double temp)
+{
+  for(int i=0;i<n_steps;i++)
+    {
+      SA_step(temp);
+    }
+}
+
+void Chromosome :: Print_Conf_Final(void)
+{
+  ofstream file("cromo_final.dat");
+
+  for(int i=0;i<c_map.Get_n_cities();i++)
+    {
+      file << c_map.Get_x(i) << ' ';
+    }
+
+  file<<endl;
+  for(int i=0;i<c_map.Get_n_cities();i++)
+    {
+      file << c_map.Get_y(i) << ' ';
+    }
+
+  file<<endl;
+  for(int i=0;i<c_n_genes;i++)
+    {
+      file << c_genes[i] << ' ';
+    }
+}
+
+
+
+void Chromosome :: Restart(void)
+{
+  ifstream file("cromo_final.dat");
+  if(!file.good()) {cerr<<"error in opening final config file"<<endl; exit(-1);};
+
+  vector<double> x; vector<double> y; vector<int> genes;
+ 
+  string tx;
+  getline(file, tx); 
+  istringstream inx(tx);
+  copy(istream_iterator<double>(inx), 
+       istream_iterator<double>(), 
+       back_inserter(x));
+
+
+  string ty;
+  getline(file, ty); 
+  istringstream iny(ty);
+  copy(istream_iterator<double>(iny), 
+       istream_iterator<double>(), 
+       back_inserter(y));
+
+  string tg;
+  getline(file, tg); 
+  istringstream ing(tg);
+  copy(istream_iterator<double>(ing), 
+       istream_iterator<double>(), 
+       back_inserter(genes));
+
+  Map old_map(x,y);
+  c_map=old_map;
+
+  c_n_genes=genes.size();
+  c_genes=genes;
+  c_cost_func=Compute_Cost_Function();
+
+  string infile_primes = "Primes";
+  string infile_seed = "seed.in";
+  c_rnd.MySetRandom(infile_primes.c_str(), infile_seed.c_str());
+}
+
+
+/*
+
+Population :: Population(int n_ind, int n_genes, Map mappa)
+{
+  string infile_primes = "Primes";
+  string infile_seed = "seed.in";
+  p_rnd.MySetRandom(infile_primes.c_str(), infile_seed.c_str());
+
+  p_n_ind=n_ind;
+  p_n_genes=n_genes;
+  p_map=mappa;
+   
+  for(int i=0;i<p_n_ind;i++)
+    {
+      vector<int> vect(p_n_genes);
+      iota(vect.begin(),vect.end(),0);
+
+      rnd_shuffle(vect.begin()+1, vect.end(), p_rnd);
+      //random_shuffle(vect.begin()+1, vect.end());
+      Chromosome cromo(vect,&p_map); 
+      
+      p_pop.push_back(cromo);
+    }
+}
+
+
+void Population :: Check_Bonds(void)
+{
+  for(int i=0;i<p_n_ind;i++)
+    {
+      vector<int> genome_to_check=Get_Genome(i).Get_Genes();
+      vector<int>::iterator it;
+
+      for(int value=1; value<p_n_genes; value++)
+	{
+	  it = find(genome_to_check.begin(), genome_to_check.end(), value);
+	  if (it != genome_to_check.end())
+	    continue;
+	  else
+	    {
+	      cerr << "bonds violation" << endl;
+	      exit(-1);
+	    }
+	}
+    }
+  //cout << "check completed with success" << endl;
+}
+
+
+void Population :: print_pop(const char *outfile)
+{
+  ofstream file(outfile);
+
+  for(int i=0;i<p_n_ind;i++)
+    {
+      Chromosome cromo = Get_Genome(i);
+      vector<int> genome=cromo.Get_Genes();
+      for (std::vector<int>::iterator it=genome.begin(); it!=genome.end(); ++it)
+	file << *it << ' ';
+      file << cromo.Get_Cost_Function() << '\n';
+    }
+
+  file.close();
+  cout << "population printed" << endl;
+}
+
+
+
+
+
+//_____________________EVOLUTION OPERATORS
+
+ 
+Chromosome Chromosome :: Mutation(Chromosome cromo)
+{
+  double r=p_rnd.Rannyu();
+  vector<int> genes=cromo.Get_Genes();
+  vector<int> new_genes;
+  
+  //mutation algorythm 1
+  if(r<0.1)
+    {
+     
+      int idx1=int(p_rnd.Rannyu(1,genes.size()));
+      int idx2=int(p_rnd.Rannyu(1,genes.size()));
+      // cout<<idx1<<' '<<idx2<<endl;
+      // cout<<"mutation1"<<endl;
+      
+      swap(genes[idx1],genes[idx2]);
+    }
+  
+  
+  //mutation algorythm 2
+  if(r>0.1 && r<0.2)
+    {
+       
+      int n=int(p_rnd.Rannyu(1, genes.size()));
+      //cout << n << endl;
+      //cout<<"mutation2"<<endl;
+      for(int i=1;i<int(genes.size());i++)
+	{
+	  if(genes[i]+n<int(genes.size()))
+	    {
+	      genes[i]+=n;
+	    }
+	  else
+	    {
+	      genes[i]=(genes[i]+n)%(genes.size()) +1;
+	    }
+	}
+    }
+  
+  if(r>0.2 && r<0.3)
+    {
+      int m=int(p_rnd.Rannyu(2,genes.size()/2));
+      int idx1=int(p_rnd.Rannyu(1,genes.size()-2*m));
+      int idx2=int(p_rnd.Rannyu(idx1+m,genes.size()-m));
+      //cout << m << ' ' << idx1 << ' ' << idx2 << endl;
+      //cout<<"mutation3"<<endl;
+      
+      swap_ranges(genes.begin()+idx1,genes.begin()+idx1+m,genes.begin()+idx2);
+    }
+
+  
+  if(r>0.3 && r<0.4)
+    {
+      int m=int(p_rnd.Rannyu(2, genes.size()));
+      int idx1=int(p_rnd.Rannyu(1,genes.size()-m));
+      //cout<<"mutation4"<<endl;
+      //cout << m << ' ' << idx1 << endl;
+      
+      reverse(genes.begin()+idx1, genes.begin()+m+idx1);
+    }  
+  
+  //if(r>0.4) cout << "no mutation" << endl;
+  new_genes=genes;
+  Chromosome new_cromo(new_genes, &p_map);
+  return new_cromo;
+}
+
+
+
+
+void Population :: Evolution_Step(void)
+{
+  vector<Chromosome> new_cromos;
+
+  while(int(new_cromos.size())<p_n_ind)
+    {
+      vector<Chromosome> parents=Selection();
+      vector<Chromosome> crossed_parents=Crossover(parents);
+      Chromosome son1=Mutation(crossed_parents[0]);
+      Chromosome son2=Mutation(crossed_parents[1]);
+
+      new_cromos.push_back(son1); new_cromos.push_back(son2);
+    }
+
+  p_pop=new_cromos;
+}
+
+
+
+void Population :: Print_Cost_Function()
+{
+  ofstream best_path;
+  best_path.open("best_path.dat",ios::app);
+  
+  ofstream best_half;
+  best_half.open("best_half.dat",ios::app);
+
+  double sum=0.;
+  for(int i=0; i<p_n_ind/2; i++)
+    {
+      sum+=p_pop[i].Get_Cost_Function();
+    }
+
+  best_path << p_pop[0].Get_Cost_Function() << endl;
+  best_half << sum/double(p_n_ind/2) << endl;
+
+  best_path.close();
+  best_half.close();
+}
+
+  
+void Population :: Evolution(int n_steps)
+{
+  for(int i=0;i<n_steps;i++)
+    {
+      Evolution_Step();
+      Fitness_Sorting();
+      Print_Cost_Function();
+      Check_Bonds();
+    }
+}
+
+  */
+/*
+  
+
+void Population :: Print_Cost_Function()
+{
+  ofstream file("cost_function.dat");
+  for(int i=0; i<m_ind; i++)
+    {
+      double cf=Compute_Cost_Function(i);
+      cost_func[i]=cf;
+      file << cf << endl;
+    }
+  file.close();
+}
+
+
+
+
+
+
+
+double Population :: Compute_Cost_Function(int ind)
+{
+  if(ind>=m_ind){cerr<<"index error in computing cost function"<<endl; exit(-1);};
+
+  double sum_x=0.;
+  double sum_y=0.;
+  
+  for(int i=0;i<m_crom-1;i++)
+    {
+      int n_city1=m_pop[ind][i];
+      int n_city2=m_pop[ind][i+1];
+      
+      sum_x+=pow( m_map.Get_x(n_city1) - m_map.Get_x(n_city2), 2.);
+      sum_y+=pow( m_map.Get_y(n_city1) - m_map.Get_y(n_city2), 2.);      
+    }
+
+  return sum_x+sum_y;
+}
+*/
+

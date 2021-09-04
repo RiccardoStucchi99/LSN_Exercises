@@ -1,0 +1,16 @@
+C = g++
+CFLAGS = -Wall -O3 
+
+LIBS := `root-config --libs`
+INCS := `root-config --cflags`
+
+
+
+main.exe : main.o random.o
+	$(CC) random.o main.o -o main.exe ${INCS} ${LIBS}
+main.o : main.cxx
+	$(CC) -c main.cxx -o main.o $(CFLAGS) ${INCS} ${LIBS}
+random.o : random.cpp random.h
+	$(CC) -c random.cpp -o random.o $(CFLAGS)
+clean :
+	rm *.o main.exe seed.out 

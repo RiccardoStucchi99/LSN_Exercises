@@ -1,0 +1,87 @@
+#include "random.h"
+#include <iostream>
+#include <float.h>
+#include <vector>
+#include <string>
+#include <numeric>
+#include <fstream>
+#include <iterator>
+#include "math.h"
+
+
+using namespace std;
+
+double error(double av, double av2, double n)
+{
+  if(n==0)
+    return 0;
+  
+  return sqrt( (av2 - av*av)/ n );
+}
+
+//double compute_pi(int n_per_cycle, double L, double D)
+
+
+
+int main (int argc, char *argv[]){
+
+ //_____________________________________________________Random generator__________________________________________________
+  Random myRandom;
+  string infile_primes = "Primes";
+  string infile_seed = "seed.in";
+  ofstream buffon("Buffon.dat");
+  
+  myRandom.MySetRandom(infile_primes.c_str(), infile_seed.c_str());
+
+  //___________________________________________________________________________________________________________________________
+  
+
+  int n_per_cycle=10000;
+  int cycles=1000;
+  double L=0.08;
+  double D=0.1;
+
+  double prog_sum=0;
+  double prog_sum2=0;
+ 
+  for(int i=0; i<cycles; i++)
+    {
+      int n_inter=0;
+  
+      for(int j=0; j<n_per_cycle; j++)
+	{
+	  double x_c=myRandom.Rannyu();
+	  double y_c=myRandom.Rannyu();
+	  //double teta=DBL_MAX*myRandom.Rannyu();
+	  double teta=myRandom.Unif_0_PI();
+
+	  double l=fabs(L*sin(teta));
+
+	  if( fmod(y_c, D) < l/2 ||  fmod(y_c, D) > D - l/2 )
+	    n_inter++;
+	}
+
+      double pi=2*L*double(n_per_cycle)/(double(n_inter)*D);
+      double pi2= pi*pi;
+      
+      prog_sum += pi;
+      prog_sum2 += pi2;
+
+
+      double prog_av = prog_sum / (i+1);
+      double prog_av2 = prog_sum2 / (i+1);
+      double prog_error = error(prog_av,  prog_av2, i);
+
+      buffon << prog_av << " " << prog_error << endl; 
+
+     }
+  
+ 
+  return 0;
+
+}
+  
+
+
+  
+ 

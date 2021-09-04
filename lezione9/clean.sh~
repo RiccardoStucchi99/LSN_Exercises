@@ -1,0 +1,2 @@
+rm -rf */best_path.dat
+rm -rf */best_half.dat
